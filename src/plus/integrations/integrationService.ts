@@ -104,6 +104,8 @@ export class IntegrationService implements Disposable {
 	}
 
 	dispose(): void {
+		this._integrations.forEach(i => i.dispose());
+		this._integrations.clear();
 		this._disposable?.dispose();
 	}
 
@@ -964,9 +966,9 @@ export class IntegrationService implements Disposable {
 		return this.getMyPullRequestsCore(integrations);
 	}
 
-	isMaybeConnected(remote: GitRemote): boolean {
+	isMaybeConnected(remote: GitRemote): boolean | undefined {
 		if (remote.provider?.id != null && this.supports(remote.provider.id)) {
-			return this.getByRemoteCached(remote)?.maybeConnected ?? false;
+			return this.getByRemoteCached(remote)?.maybeConnected;
 		}
 		return false;
 	}
