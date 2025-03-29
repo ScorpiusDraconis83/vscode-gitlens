@@ -7,6 +7,7 @@ import type {
 	AzureProject,
 	AzureSetPullRequestInput,
 	Bitbucket,
+	BitbucketServer,
 	BitbucketWorkspaceStub,
 	EnterpriseOptions,
 	GetRepoInput,
@@ -18,6 +19,7 @@ import type {
 	Jira,
 	JiraProject,
 	JiraResource,
+	NumberedPageInput,
 	Issue as ProviderApiIssue,
 	PullRequestWithUniqueID,
 	RequestFunction,
@@ -82,6 +84,7 @@ const selfHostedIntegrationIds: SelfHostedIntegrationId[] = [
 	SelfHostedIntegrationId.GitHubEnterprise,
 	SelfHostedIntegrationId.CloudGitLabSelfHosted,
 	SelfHostedIntegrationId.GitLabSelfHosted,
+	SelfHostedIntegrationId.BitbucketServer,
 ] as const;
 
 export const supportedIntegrationIds: IntegrationId[] = [
@@ -108,23 +111,27 @@ export function isHostingIntegrationId(id: IntegrationId): id is HostingIntegrat
 }
 
 export function isCloudSelfHostedIntegrationId(id: IntegrationId): id is CloudSelfHostedIntegrationId {
-	return id === SelfHostedIntegrationId.CloudGitHubEnterprise || id === SelfHostedIntegrationId.CloudGitLabSelfHosted;
+	return (
+		id === SelfHostedIntegrationId.CloudGitHubEnterprise ||
+		id === SelfHostedIntegrationId.CloudGitLabSelfHosted ||
+		id === SelfHostedIntegrationId.BitbucketServer
+	);
 }
 
-export enum PullRequestFilter {
+export const enum PullRequestFilter {
 	Author = 'author',
 	Assignee = 'assignee',
 	ReviewRequested = 'review-requested',
 	Mention = 'mention',
 }
 
-export enum IssueFilter {
+export const enum IssueFilter {
 	Author = 'author',
 	Assignee = 'assignee',
 	Mention = 'mention',
 }
 
-export enum PagingMode {
+export const enum PagingMode {
 	Project = 'project',
 	Repo = 'repo',
 	Repos = 'repos',
@@ -151,6 +158,7 @@ export interface GetPullRequestsOptions {
 	assigneeLogins?: string[];
 	reviewRequestedLogin?: string;
 	mentionLogin?: string;
+	query?: string;
 	cursor?: string; // stringified JSON object of type { type: 'cursor' | 'page'; value: string | number } | {}
 	baseUrl?: string;
 }
@@ -226,6 +234,15 @@ export interface PageInfo {
 	nextPage?: number | null;
 }
 
+export type GetRepoFn = (
+	input: ProviderRepoInput,
+	options?: EnterpriseOptions,
+) => Promise<{ data: ProviderRepository }>;
+export type GetRepoOfProjectFn = (
+	input: ProviderRepoInput & { project: string },
+	options?: EnterpriseOptions,
+) => Promise<{ data: ProviderRepository }>;
+
 export type GetPullRequestsForReposFn = (
 	input: (GetPullRequestsForReposInput | GetPullRequestsForRepoIdsInput) & PagingInput,
 	options?: EnterpriseOptions,
@@ -253,6 +270,7 @@ export type MergePullRequestFn =
 					headRef: {
 						oid: string | null;
 					} | null;
+					version?: number; // Used by BitbucketServer
 				} & SetPullRequestInput;
 				mergeStrategy?: GitMergeStrategy;
 			},
@@ -342,6 +360,29 @@ export type GetBitbucketResourcesForUserFn = (
 	input: { userId: string },
 	options?: EnterpriseOptions,
 ) => Promise<{ data: BitbucketWorkspaceStub[] }>;
+export type GetBitbucketPullRequestsAuthoredByUserForWorkspaceFn = (
+	input: {
+		userId: string;
+		workspaceSlug: string;
+	} & NumberedPageInput,
+	options?: EnterpriseOptions,
+) => Promise<{
+	pageInfo: {
+		hasNextPage: boolean;
+		nextPage: number | null;
+	};
+	data: GitPullRequest[];
+}>;
+export type GetBitbucketServerPullRequestsForCurrentUserFn = (
+	input: NumberedPageInput,
+	options?: EnterpriseOptions,
+) => Promise<{
+	pageInfo: {
+		hasNextPage: boolean;
+		nextPage: number | null;
+	};
+	data: GitPullRequest[];
+}>;
 export type GetIssuesForProjectFn = Jira['getIssuesForProject'];
 export type GetIssuesForResourceForCurrentUserFn = (
 	input: { resourceId: string },
@@ -349,7 +390,9 @@ export type GetIssuesForResourceForCurrentUserFn = (
 ) => Promise<{ data: ProviderIssue[] }>;
 
 export interface ProviderInfo extends ProviderMetadata {
-	provider: GitHub | GitLab | Bitbucket | Jira | Trello | AzureDevOps;
+	provider: GitHub | GitLab | Bitbucket | BitbucketServer | Jira | Trello | AzureDevOps;
+	getRepoFn?: GetRepoFn;
+	getRepoOfProjectFn?: GetRepoOfProjectFn;
 	getPullRequestsForReposFn?: GetPullRequestsForReposFn;
 	getPullRequestsForRepoFn?: GetPullRequestsForRepoFn;
 	getPullRequestsForUserFn?: GetPullRequestsForUserFn;
@@ -364,6 +407,8 @@ export interface ProviderInfo extends ProviderMetadata {
 	getJiraResourcesForCurrentUserFn?: GetJiraResourcesForCurrentUserFn;
 	getAzureResourcesForUserFn?: GetAzureResourcesForUserFn;
 	getBitbucketResourcesForUserFn?: GetBitbucketResourcesForUserFn;
+	getBitbucketPullRequestsAuthoredByUserForWorkspaceFn?: GetBitbucketPullRequestsAuthoredByUserForWorkspaceFn;
+	getBitbucketServerPullRequestsForCurrentUserFn?: GetBitbucketServerPullRequestsForCurrentUserFn;
 	getJiraProjectsForResourcesFn?: GetJiraProjectsForResourcesFn;
 	getAzureProjectsForResourceFn?: GetAzureProjectsForResourceFn;
 	getIssuesForProjectFn?: GetIssuesForProjectFn;
@@ -510,6 +555,15 @@ export const providersMetadata: ProvidersMetadata = {
 		// Use 'id' property on account for PR filters
 		supportedPullRequestFilters: [PullRequestFilter.Author],
 		scopes: ['account:read', 'repository:read', 'pullrequest:read', 'issue:read'],
+	},
+	[SelfHostedIntegrationId.BitbucketServer]: {
+		domain: '',
+		id: SelfHostedIntegrationId.BitbucketServer,
+		name: 'Bitbucket Data Center',
+		type: 'hosting',
+		iconKey: SelfHostedIntegrationId.BitbucketServer,
+		supportedPullRequestFilters: [PullRequestFilter.Author, PullRequestFilter.ReviewRequested],
+		scopes: ['Project (Read)', 'Repository (Write)'],
 	},
 	[HostingIntegrationId.AzureDevOps]: {
 		domain: 'dev.azure.com',
@@ -912,7 +966,7 @@ export function fromProviderPullRequest(
 		integration,
 		fromProviderAccount(pr.author),
 		pr.id,
-		pr.graphQLId,
+		pr.graphQLId || pr.id,
 		pr.title,
 		pr.url ?? '',
 		{
@@ -965,6 +1019,7 @@ export function fromProviderPullRequest(
 			? fromProviderBuildStatusState[pr.headCommit.buildStatuses[0].state]
 			: undefined,
 		options?.project,
+		pr.version,
 	);
 }
 

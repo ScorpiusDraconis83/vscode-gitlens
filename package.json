@@ -2,7 +2,7 @@
 	"name": "gitlens",
 	"displayName": "GitLens — Git supercharged",
 	"description": "Supercharge Git within VS Code — Visualize code authorship at a glance via Git blame annotations and CodeLens, seamlessly navigate and explore Git repositories, gain valuable insights via rich visualizations and powerful comparison commands, and so much more",
-	"version": "16.3.0",
+	"version": "2025.3.2820",
 	"engines": {
 		"node": ">= 22.12.0",
 		"pnpm": ">= 10.0.0",
@@ -3913,6 +3913,14 @@
 											"type": "string",
 											"markdownDescription": "Specifies the format of a commit URL for the custom remote service\n\nAvailable tokens\\\n`${repo}` &mdash; repository path\\\n`${id}` &mdash; commit SHA"
 										},
+										"comparison": {
+											"type": "string",
+											"markdownDescription": "Specifies the format of a comparison URL for the custom remote service\n\nAvailable tokens\\\n`${repo}` &mdash; repository path\\\n`${ref1}` &mdash; ref 1\\\n`${ref2}` &mdash; ref 2\\\n`${notation}` &mdash; notation"
+										},
+										"createPullRequest": {
+											"type": "string",
+											"markdownDescription": "Specifies the format of a create pull request URL for the custom remote service\n\nAvailable tokens\\\n`${repo}` &mdash; repository path\\\n`${base}` &mdash; base branch\\\n`${compare}` &mdash; compare branch"
+										},
 										"file": {
 											"type": "string",
 											"markdownDescription": "Specifies the format of a file URL for the custom remote service\n\nAvailable tokens\\\n`${repo}` &mdash; repository path\\\n`${file}` &mdash; file name\\\n`${line}` &mdash; formatted line information"
@@ -4033,7 +4041,7 @@
 							"null"
 						],
 						"default": null,
-						"pattern": "^((anthropic|deepseek|github|google|huggingface|openai|xai):([\\w.-]+)|gitkraken|vscode)$",
+						"pattern": "^((anthropic|deepseek|gemini|github|huggingface|openai|xai):([\\w.-]+)|gitkraken|vscode)$",
 						"markdownDescription": "Specifies the AI provider and model to use for GitLens' AI features. Should be formatted as `provider:model` (e.g. `openai:gpt-4o` or `anthropic:claude-3-5-sonnet-latest`), `gitkraken` for GitKraken AI provided models, or `vscode` for models provided by the VS Code extension API (e.g. Copilot)",
 						"scope": "window",
 						"order": 10,
@@ -4144,7 +4152,7 @@
 							"preview"
 						]
 					},
-					"gitlens.ai.generateCloudPatchMessage.customInstructions": {
+					"gitlens.ai.generateCreateCloudPatch.customInstructions": {
 						"type": "string",
 						"default": null,
 						"markdownDescription": "Specifies custom instructions to provide to the AI provider when generating a cloud patch title and description",
@@ -4154,12 +4162,22 @@
 							"preview"
 						]
 					},
-					"gitlens.ai.generateCodeSuggestMessage.customInstructions": {
+					"gitlens.ai.generateCreateCodeSuggest.customInstructions": {
 						"type": "string",
 						"default": null,
 						"markdownDescription": "Specifies custom instructions to provide to the AI provider when generating a code suggest title and description",
 						"scope": "window",
 						"order": 400,
+						"tags": [
+							"preview"
+						]
+					},
+					"gitlens.ai.generateCreatePullRequest.customInstructions": {
+						"type": "string",
+						"default": null,
+						"markdownDescription": "Specifies custom instructions to provide to the AI provider when generating a pull request title and description",
+						"scope": "window",
+						"order": 500,
 						"tags": [
 							"preview"
 						]
@@ -7285,6 +7303,11 @@
 				"category": "GitLens"
 			},
 			{
+				"command": "gitlens.plus.referFriend",
+				"title": "Refer a friend",
+				"category": "GitLens"
+			},
+			{
 				"command": "gitlens.plus.refreshRepositoryAccess",
 				"title": "Refresh Repository Access",
 				"category": "GitLens"
@@ -7705,7 +7728,7 @@
 			},
 			{
 				"command": "gitlens.switchAIModel",
-				"title": "Switch AI Model",
+				"title": "Switch AI Provider/Model",
 				"category": "GitLens"
 			},
 			{
@@ -7833,7 +7856,7 @@
 			},
 			{
 				"command": "gitlens.views.ai.generateChangelog",
-				"title": "Generate Changelog",
+				"title": "Generate Changelog (Preview)",
 				"icon": "$(sparkle)"
 			},
 			{
@@ -11301,6 +11324,10 @@
 				{
 					"command": "gitlens.plus.reactivateProTrial",
 					"when": "gitlens:plus:state == 5"
+				},
+				{
+					"command": "gitlens.plus.referFriend",
+					"when": "gitlens:plus:state == 6"
 				},
 				{
 					"command": "gitlens.plus.refreshRepositoryAccess",
@@ -20828,47 +20855,47 @@
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Connect an Integration...](command:gitlens.showLaunchpad?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nAllows Launchpad to organize your pull requests into actionable groups and keep your team unblocked.",
-				"when": "gitlens:launchpad:connect"
+				"when": "!gitlens:launchpad:connected"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Resend Verification Email](command:gitlens.plus.resendVerification?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nYou must verify your email before you can continue or [recheck Status](command:gitlens.plus.validate?%7B%22source%22%3A%22launchpad-view%22%7D).",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:state == -1"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == -1"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Continue](command:gitlens.plus.startPreviewTrial?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nContinuing gives you 3 days to preview Launchpad and other local Pro features for 3 days. [Start 14-day Pro trial](command:gitlens.plus.signUp?%7B%22source%22%3A%22launchpad-view%22%7D) or [sign in](command:gitlens.plus.login?%7B%22source%22%3A%22launchpad-view%22%7D) for full access to Pro features.",
-				"when": "false && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 0"
+				"when": "false && gitlens:launchpad:connected && gitlens:plus:state == 0"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Try GitLens Pro](command:gitlens.plus.signUp?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nGet 14 days of GitLens Pro for free — no credit card required. Or [sign in](command:gitlens.plus.login?%7B%22source%22%3A%22launchpad-view%22%7D).",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && (gitlens:plus:state == 0 || gitlens:plus:state == 2)"
+				"when": "gitlens:launchpad:connected && (gitlens:plus:state == 0 || gitlens:plus:state == 2)"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Upgrade to Pro](command:gitlens.plus.upgrade?%7B%22source%22%3A%22launchpad-view%22%7D)",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == 4"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "Limited-time sale on GitLens Pro.",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo && gitlens:promo != pro50"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == 4 && gitlens:promo && gitlens:promo != pro50"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "Save 33% or more on GitLens Pro.",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo == pro50"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == 4 && gitlens:promo == pro50"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "Your Pro trial has ended. Please upgrade for full access to Launchpad and other Pro features.",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == 4"
 			},
 			{
 				"view": "gitlens.views.launchpad",
 				"contents": "[Continue](command:gitlens.plus.reactivateProTrial?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nReactivate your Pro trial and experience Launchpad and all the new Pro features — free for another 14 days!",
-				"when": "!gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 5"
+				"when": "gitlens:launchpad:connected && gitlens:plus:state == 5"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
@@ -20888,47 +20915,47 @@
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Connect an Integration...](command:gitlens.showLaunchpad?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nAllows Launchpad to organize your pull requests into actionable groups and keep your team unblocked.",
-				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connect"
+				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connected"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Resend Verification Email](command:gitlens.plus.resendVerification?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nYou must verify your email before you can continue or [recheck Status](command:gitlens.plus.validate?%7B%22source%22%3A%22launchpad-view%22%7D).",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:state == -1"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == -1"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Continue](command:gitlens.plus.startPreviewTrial?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nContinuing gives you 3 days to preview Launchpad and other local Pro features for 3 days. [Start 14-day Pro trial](command:gitlens.plus.signUp?%7B%22source%22%3A%22launchpad-view%22%7D) or [sign in](command:gitlens.plus.login?%7B%22source%22%3A%22launchpad-view%22%7D) for full access to Pro features.",
-				"when": "gitlens:views:scm:grouped:view == launchpad && false && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 0"
+				"when": "gitlens:views:scm:grouped:view == launchpad && false && gitlens:launchpad:connected && gitlens:plus:state == 0"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Try GitLens Pro](command:gitlens.plus.signUp?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nGet 14 days of GitLens Pro for free — no credit card required. Or [sign in](command:gitlens.plus.login?%7B%22source%22%3A%22launchpad-view%22%7D).",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && (gitlens:plus:state == 0 || gitlens:plus:state == 2)"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && (gitlens:plus:state == 0 || gitlens:plus:state == 2)"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Upgrade to Pro](command:gitlens.plus.upgrade?%7B%22source%22%3A%22launchpad-view%22%7D)",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == 4"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "Limited-time sale on GitLens Pro.",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo && gitlens:promo != pro50"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == 4 && gitlens:promo && gitlens:promo != pro50"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "Save 33% or more on GitLens Pro.",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo == pro50"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == 4 && gitlens:promo == pro50"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "Your Pro trial has ended. Please upgrade for full access to Launchpad and other Pro features.",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 4"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == 4"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
 				"contents": "[Continue](command:gitlens.plus.reactivateProTrial?%7B%22source%22%3A%22launchpad-view%22%7D)\n\nReactivate your Pro trial and experience Launchpad and all the new Pro features — free for another 14 days!",
-				"when": "gitlens:views:scm:grouped:view == launchpad && !gitlens:launchpad:connect && gitlens:plus:required && gitlens:plus:state == 5"
+				"when": "gitlens:views:scm:grouped:view == launchpad && gitlens:launchpad:connected && gitlens:plus:state == 5"
 			},
 			{
 				"view": "gitlens.views.scm.grouped",
@@ -21361,6 +21388,17 @@
 						"when": "gitlens:plus:state == 6"
 					},
 					{
+						"id": "welcome-home-view",
+						"title": "(New) The Home View",
+						"description": "Compact yet powerful, the Home View helps you quickly start work on issues, create PRs, and manage branches—all from a single intelligent view.\n\nImprove workflow visibility with clear paths to take action on:\n\n- What am I actively working on now?\n- What should I work on next?\n- What have I worked on recently?\n\nThe Home View is the perfect companion for developers looking to reduce tedious context switching and stay focused on their work in VS Code.\n\n\n[Open the Home View](command:gitlens.walkthrough.showHomeView)\n$(gitlens-play-button)  [Watch a video on the Home view](command:gitlens.walkthrough.openHomeViewVideo)",
+						"media": {
+							"markdown": "walkthroughs/welcome/home.md"
+						},
+						"completionEvents": [
+							"onContext:gitlens:walkthroughState:homeView == true"
+						]
+					},
+					{
 						"id": "visualize-code-history",
 						"title": "Interactive Code History",
 						"description": "$(gitlens-gitlens)  **Blame Annotations and Hovers**\n\nSee who changed what and why with in-editor blame annotations, hovers, and CodeLens.\n\n$(gitlens-graph)  **Visual Commit Graph & Search**\n\nNavigate complex Git histories with clarity using the interactive Commit Graph to visualize changes and search your repository.\n\n[View your Commit Graph](command:gitlens.walkthrough.showGraph)\n\n$(gitlens-gitlens-inspect)  **GitLens Inspect**\n\nDive deep into the revision history of files, folders, or specific lines. Get the context you need to understand changes faster. [Open GitLens Inspect](command:gitlens.walkthrough.gitlensInspect)\n\n$(gitlens-play-button)  [Watch a video about Interactive Code History](command:gitlens.walkthrough.openInteractiveCodeHistory)",
@@ -21476,7 +21514,7 @@
 	"dependencies": {
 		"@gitkraken/gitkraken-components": "10.7.0",
 		"@gitkraken/gitkraken-components-next": "npm:@gitkraken/gitkraken-components@11.0.0-vnext.3",
-		"@gitkraken/provider-apis": "0.26.2",
+		"@gitkraken/provider-apis": "0.28.2",
 		"@gitkraken/shared-web-components": "0.1.1-rc.15",
 		"@gk-nzaytsev/fast-string-truncated-width": "1.1.0",
 		"@lit-labs/signals": "0.1.2",
@@ -21486,16 +21524,16 @@
 		"@octokit/graphql": "8.2.1",
 		"@octokit/request": "9.2.2",
 		"@octokit/request-error": "6.1.7",
-		"@octokit/types": "13.8.0",
+		"@octokit/types": "13.10.0",
 		"@opentelemetry/api": "1.9.0",
-		"@opentelemetry/exporter-trace-otlp-http": "0.57.2",
-		"@opentelemetry/resources": "1.30.1",
-		"@opentelemetry/sdk-trace-base": "1.30.1",
+		"@opentelemetry/exporter-trace-otlp-http": "0.200.0",
+		"@opentelemetry/resources": "2.0.0",
+		"@opentelemetry/sdk-trace-base": "2.0.0",
 		"@opentelemetry/semantic-conventions": "1.30.0",
 		"@r2wc/react-to-web-component": "2.0.4",
 		"@shoelace-style/shoelace": "2.20.0",
 		"@vscode/codicons": "0.0.36",
-		"billboard.js": "3.14.3",
+		"billboard.js": "3.15.0",
 		"https-proxy-agent": "5.0.1",
 		"iconv-lite": "0.6.3",
 		"lit": "3.2.1",
@@ -21513,25 +21551,25 @@
 	},
 	"devDependencies": {
 		"@eamodio/eslint-lite-webpack-plugin": "0.2.0",
-		"@eslint/js": "9.22.0",
-		"@playwright/test": "1.51.0",
-		"@swc/core": "1.11.9",
+		"@eslint/js": "9.23.0",
+		"@playwright/test": "1.51.1",
+		"@swc/core": "1.11.13",
 		"@twbs/fantasticon": "3.1.0",
 		"@types/mocha": "10.0.10",
 		"@types/node": "20.14.15",
-		"@types/react": "17.0.83",
-		"@types/react-next": "npm:@types/react@19.0.10",
-		"@types/react-dom": "17.0.25",
+		"@types/react": "17.0.84",
+		"@types/react-next": "npm:@types/react@19.0.12",
+		"@types/react-dom": "17.0.26",
 		"@types/react-dom-next": "npm:@types/react-dom@19.0.4",
 		"@types/sinon": "17.0.4",
 		"@types/slug": "5.0.9",
 		"@types/sortablejs": "1.15.8",
 		"@types/vscode": "1.92.0",
-		"@typescript-eslint/parser": "8.26.1",
+		"@typescript-eslint/parser": "8.28.0",
 		"@vscode/test-cli": "0.0.10",
 		"@vscode/test-electron": "2.4.1",
 		"@vscode/test-web": "0.0.67",
-		"@vscode/vsce": "3.2.2",
+		"@vscode/vsce": "3.3.0",
 		"cheerio": "1.0.0-rc.12",
 		"circular-dependency-plugin": "5.2.2",
 		"clean-webpack-plugin": "4.0.0",
@@ -21544,12 +21582,12 @@
 		"esbuild-loader": "4.3.0",
 		"esbuild-node-externals": "1.18.0",
 		"esbuild-sass-plugin": "3.3.1",
-		"eslint": "9.22.0",
-		"eslint-import-resolver-oxc": "0.13.0",
+		"eslint": "9.23.0",
+		"eslint-import-resolver-oxc": "0.13.1",
 		"eslint-plugin-anti-trojan-source": "1.1.1",
-		"eslint-plugin-import-x": "4.6.1",
-		"eslint-plugin-lit": "1.15.0",
-		"eslint-plugin-wc": "2.2.1",
+		"eslint-plugin-import-x": "4.9.1",
+		"eslint-plugin-lit": "2.0.0",
+		"eslint-plugin-wc": "3.0.0",
 		"fork-ts-checker-webpack-plugin": "9.0.2",
 		"glob": "11.0.1",
 		"globals": "16.0.0",
@@ -21560,19 +21598,19 @@
 		"lz-string": "1.5.0",
 		"mini-css-extract-plugin": "2.9.2",
 		"ovsx": "0.10.1",
-		"playwright": "1.51.0",
+		"playwright": "1.51.1",
 		"prettier": "3.1.0",
 		"regex-to-strings": "2.1.0",
-		"sass": "1.85.1",
+		"sass": "1.86.0",
 		"sass-loader": "16.0.5",
 		"schema-utils": "4.3.0",
 		"sharp": "0.33.5",
-		"sinon": "19.0.2",
+		"sinon": "19.0.4",
 		"svgo": "3.3.2",
 		"terser-webpack-plugin": "5.3.14",
 		"ts-loader": "9.5.2",
 		"typescript": "5.8.2",
-		"typescript-eslint": "8.26.1",
+		"typescript-eslint": "8.28.0",
 		"webpack": "5.98.0",
 		"webpack-bundle-analyzer": "4.10.2",
 		"webpack-cli": "6.0.1",
@@ -21585,5 +21623,5 @@
 		"node-fetch": "2.7.0",
 		"semver-regex": "4.0.5"
 	},
-	"packageManager": "pnpm@10.6.2"
+	"packageManager": "pnpm@10.6.5"
 }

@@ -4,14 +4,14 @@ import { fetch } from '@env/fetch';
 import type { AIProviders } from '../../constants.ai';
 import type { TelemetryEvents } from '../../constants.telemetry';
 import type { Container } from '../../container';
-import { CancellationError } from '../../errors';
+import { CancellationError, GkAIError } from '../../errors';
 import { sum } from '../../system/iterable';
 import { getLoggableName, Logger } from '../../system/logger';
 import { startLogScope } from '../../system/logger.scope';
 import type { ServerConnection } from '../gk/serverConnection';
-import type { AIActionType, AIModel } from './models/model';
+import type { AIActionType, AIModel, AIProviderDescriptor } from './models/model';
 import type { PromptTemplate, PromptTemplateContext } from './models/promptTemplates';
-import type { AIProvider } from './models/provider';
+import type { AIProvider, AIRequestResult } from './models/provider';
 import {
 	getMaxCharacters,
 	getOrPromptApiKey,
@@ -36,7 +36,12 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 
 	abstract readonly id: T;
 	abstract readonly name: string;
+	protected abstract readonly descriptor: AIProviderDescriptor<T>;
 	protected abstract readonly config: { keyUrl?: string; keyValidator?: RegExp };
+
+	async configured(silent: boolean): Promise<boolean> {
+		return (await this.getApiKey(silent)) != null;
+	}
 
 	abstract getModels(): Promise<readonly AIModel<T>[]>;
 	async getPromptTemplate<TAction extends AIActionType>(
@@ -48,15 +53,20 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 
 	protected abstract getUrl(_model: AIModel<T>): string;
 
-	protected async getApiKey(): Promise<string | undefined> {
+	protected async getApiKey(silent: boolean): Promise<string | undefined> {
 		const { keyUrl, keyValidator } = this.config;
 
-		return getOrPromptApiKey(this.container.storage, {
-			id: this.id,
-			name: this.name,
-			validator: keyValidator != null ? v => keyValidator.test(v) : () => true,
-			url: keyUrl,
-		});
+		return getOrPromptApiKey(
+			this.container,
+			{
+				id: this.id,
+				name: this.name,
+				requiresAccount: this.descriptor.requiresAccount,
+				validator: keyValidator != null ? v => keyValidator.test(v) : () => true,
+				url: keyUrl,
+			},
+			silent,
+		);
 	}
 
 	protected getHeaders<TAction extends AIActionType>(
@@ -78,10 +88,10 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 		model: AIModel<T>,
 		reporting: TelemetryEvents['ai/generate' | 'ai/explain'],
 		options?: { cancellation?: CancellationToken; outputTokens?: number },
-	): Promise<string | undefined> {
+	): Promise<AIRequestResult | undefined> {
 		using scope = startLogScope(`${getLoggableName(this)}.sendRequest`, false);
 
-		const apiKey = await this.getApiKey();
+		const apiKey = await this.getApiKey(false);
 		if (apiKey == null) return undefined;
 
 		const prompt = await this.getPromptTemplate(action, model);
@@ -118,6 +128,8 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 			return result;
 		} catch (ex) {
 			Logger.error(ex, scope, `Unable to ${prompt.name}: (${model.provider.name})`);
+			if (ex instanceof GkAIError) throw ex;
+
 			throw new Error(`Unable to ${prompt.name}: (${model.provider.name}) ${ex.message}`);
 		}
 	}
@@ -129,7 +141,7 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 		messages: (maxCodeCharacters: number, retries: number) => ChatMessage[],
 		outputTokens: number,
 		cancellation: CancellationToken | undefined,
-	): Promise<[result: string, maxCodeCharacters: number]> {
+	): Promise<[result: AIRequestResult, maxCodeCharacters: number]> {
 		let retries = 0;
 		let maxCodeCharacters = getMaxCharacters(model, 2600);
 
@@ -153,7 +165,23 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 			}
 
 			const data: ChatCompletionResponse = await rsp.json();
-			const result = data.choices?.[0].message.content?.trim() ?? data.content?.[0]?.text?.trim() ?? '';
+			const result: AIRequestResult = {
+				id: data.id,
+				content: data.choices?.[0].message.content?.trim() ?? data.content?.[0]?.text?.trim() ?? '',
+				usage: {
+					promptTokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens,
+					completionTokens: data.usage?.completion_tokens ?? data.usage?.output_tokens,
+					totalTokens: data.usage?.total_tokens,
+					limits:
+						data?.usage?.gk != null
+							? {
+									used: data.usage.gk.used,
+									limit: data.usage.gk.limit,
+									resetsOn: new Date(data.usage.gk.resets_on),
+							  }
+							: undefined,
+				},
+			};
 			return [result, maxCodeCharacters];
 		}
 	}
@@ -164,7 +192,7 @@ export abstract class OpenAICompatibleProvider<T extends AIProviders> implements
 		model: AIModel<T>,
 		retries: number,
 		maxCodeCharacters: number,
-	): Promise<{ retry: boolean; maxCodeCharacters: number }> {
+	): Promise<{ retry: true; maxCodeCharacters: number }> {
 		if (rsp.status === 404) {
 			throw new Error(`Your API key doesn't seem to have access to the selected '${model.id}' model`);
 		}
@@ -263,5 +291,12 @@ interface ChatCompletionResponse {
 		/** Anthropic */
 		input_tokens?: number;
 		output_tokens?: number;
+
+		/** GitKraken */
+		gk: {
+			used: number;
+			limit: number;
+			resets_on: string;
+		};
 	};
 }

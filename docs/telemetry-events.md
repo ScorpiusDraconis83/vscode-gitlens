@@ -50,7 +50,7 @@
   'global.subscription.actual.bundle': boolean,
   'global.subscription.actual.cancelled': boolean,
   'global.subscription.actual.expiresOn': string,
-  'global.subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'global.subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'global.subscription.actual.nextTrialOptInDate': string,
   'global.subscription.actual.organizationId': string,
   'global.subscription.actual.startedOn': string,
@@ -58,7 +58,7 @@
   'global.subscription.effective.bundle': boolean,
   'global.subscription.effective.cancelled': boolean,
   'global.subscription.effective.expiresOn': string,
-  'global.subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'global.subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'global.subscription.effective.nextTrialOptInDate': string,
   'global.subscription.effective.organizationId': string,
   'global.subscription.effective.startedOn': string,
@@ -124,7 +124,13 @@
   'model.provider.name': string,
   'output.length': number,
   'retry.count': number,
-  'type': 'change'
+  'type': 'change',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
 }
 ```
 
@@ -143,7 +149,13 @@
   'model.provider.name': string,
   'output.length': number,
   'retry.count': number,
-  'type': 'commitMessage'
+  'type': 'commitMessage',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
 }
 ```
 
@@ -161,7 +173,13 @@ or
   'model.provider.name': string,
   'output.length': number,
   'retry.count': number,
-  'type': 'draftMessage'
+  'type': 'draftMessage',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
 }
 ```
 
@@ -178,7 +196,13 @@ or
   'model.provider.name': string,
   'output.length': number,
   'retry.count': number,
-  'type': 'stashMessage'
+  'type': 'stashMessage',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
 }
 ```
 
@@ -195,7 +219,36 @@ or
   'model.provider.name': string,
   'output.length': number,
   'retry.count': number,
-  'type': 'changelog'
+  'type': 'createPullRequest',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
+}
+```
+
+or
+
+```typescript
+{
+  'duration': number,
+  'failed.error': string,
+  'failed.reason': 'user-declined' | 'user-cancelled' | 'error',
+  'input.length': number,
+  'model.id': string,
+  'model.provider.id': 'anthropic' | 'deepseek' | 'gemini' | 'github' | 'gitkraken' | 'huggingface' | 'openai' | 'vscode' | 'xai',
+  'model.provider.name': string,
+  'output.length': number,
+  'retry.count': number,
+  'type': 'changelog',
+  'usage.completionTokens': number,
+  'usage.limits.limit': number,
+  'usage.limits.resetsOn': string,
+  'usage.limits.used': number,
+  'usage.promptTokens': number,
+  'usage.totalTokens': number
 }
 ```
 
@@ -378,7 +431,7 @@ or
 ```typescript
 {
   'hostingProvider.key': string,
-  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
+  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
 }
 ```
 
@@ -389,7 +442,7 @@ or
 ```typescript
 {
   'hostingProvider.key': string,
-  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
+  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
 }
 ```
 
@@ -400,7 +453,7 @@ or
 ```typescript
 {
   'issueProvider.key': string,
-  'issueProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
+  'issueProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
 }
 ```
 
@@ -411,7 +464,7 @@ or
 ```typescript
 {
   'issueProvider.key': string,
-  'issueProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
+  'issueProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
 }
 ```
 
@@ -432,7 +485,7 @@ or
 
 ```typescript
 {
-  'integration.id': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
+  'integration.id': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted'
 }
 ```
 
@@ -1484,7 +1537,7 @@ void
   'repoPrivacy': 'private' | 'public' | 'local',
   'repository.visibility': 'private' | 'public' | 'local',
   // Provided for compatibility with other GK surfaces
-  'source': 'account' | 'subscription' | 'graph' | 'patchDetails' | 'settings' | 'timeline' | 'home' | 'view' | 'code-suggest' | 'associateIssueWithBranch' | 'cloud-patches' | 'commandPalette' | 'deeplink' | 'inspect' | 'inspect-overview' | 'integrations' | 'launchpad' | 'launchpad-indicator' | 'launchpad-view' | 'notification' | 'prompt' | 'quick-wizard' | 'remoteProvider' | 'startWork' | 'trial-indicator' | 'scm-input' | 'walkthrough' | 'whatsnew' | 'worktrees'
+  'source': 'account' | 'subscription' | 'graph' | 'patchDetails' | 'settings' | 'timeline' | 'home' | 'view' | 'code-suggest' | 'ai' | 'ai:picker' | 'associateIssueWithBranch' | 'cloud-patches' | 'commandPalette' | 'deeplink' | 'feature-badge' | 'feature-gate' | 'inspect' | 'inspect-overview' | 'integrations' | 'launchpad' | 'launchpad-indicator' | 'launchpad-view' | 'merge-target' | 'notification' | 'prompt' | 'quick-wizard' | 'remoteProvider' | 'startWork' | 'trial-indicator' | 'scm-input' | 'walkthrough' | 'whatsnew' | 'worktrees'
 }
 ```
 
@@ -1553,7 +1606,7 @@ void
 ```typescript
 {
   'hostingProvider.key': string,
-  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted',
+  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted',
   // @deprecated: true
   'remoteProviders.key': string
 }
@@ -1566,7 +1619,7 @@ void
 ```typescript
 {
   'hostingProvider.key': string,
-  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted',
+  'hostingProvider.provider': 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps' | 'jira' | 'trello' | 'bitbucket-server' | 'github-enterprise' | 'cloud-github-enterprise' | 'cloud-gitlab-self-hosted' | 'gitlab-self-hosted',
   // @deprecated: true
   'remoteProviders.key': string
 }
@@ -1771,7 +1824,7 @@ void
   'subscription.actual.bundle': boolean,
   'subscription.actual.cancelled': boolean,
   'subscription.actual.expiresOn': string,
-  'subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'subscription.actual.nextTrialOptInDate': string,
   'subscription.actual.organizationId': string,
   'subscription.actual.startedOn': string,
@@ -1779,7 +1832,7 @@ void
   'subscription.effective.bundle': boolean,
   'subscription.effective.cancelled': boolean,
   'subscription.effective.expiresOn': string,
-  'subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'subscription.effective.nextTrialOptInDate': string,
   'subscription.effective.organizationId': string,
   'subscription.effective.startedOn': string,
@@ -1805,7 +1858,7 @@ void
 
 ```typescript
 {
-  'action': 'manage' | 'sign-up' | 'sign-in' | 'sign-out' | 'reactivate' | 'resend-verification' | 'pricing' | 'start-preview-trial'
+  'action': 'manage' | 'sign-up' | 'sign-in' | 'sign-out' | 'manage-subscription' | 'reactivate' | 'refer-friend' | 'resend-verification' | 'pricing' | 'start-preview-trial'
 }
 ```
 
@@ -1860,7 +1913,7 @@ or
   'previous.subscription.actual.bundle': boolean,
   'previous.subscription.actual.cancelled': boolean,
   'previous.subscription.actual.expiresOn': string,
-  'previous.subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'previous.subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'previous.subscription.actual.nextTrialOptInDate': string,
   'previous.subscription.actual.organizationId': string,
   'previous.subscription.actual.startedOn': string,
@@ -1868,7 +1921,7 @@ or
   'previous.subscription.effective.bundle': boolean,
   'previous.subscription.effective.cancelled': boolean,
   'previous.subscription.effective.expiresOn': string,
-  'previous.subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'previous.subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'previous.subscription.effective.nextTrialOptInDate': string,
   'previous.subscription.effective.organizationId': string,
   'previous.subscription.effective.startedOn': string,
@@ -1878,7 +1931,7 @@ or
   'subscription.actual.bundle': boolean,
   'subscription.actual.cancelled': boolean,
   'subscription.actual.expiresOn': string,
-  'subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'subscription.actual.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'subscription.actual.nextTrialOptInDate': string,
   'subscription.actual.organizationId': string,
   'subscription.actual.startedOn': string,
@@ -1886,7 +1939,7 @@ or
   'subscription.effective.bundle': boolean,
   'subscription.effective.cancelled': boolean,
   'subscription.effective.expiresOn': string,
-  'subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'teams' | 'enterprise',
+  'subscription.effective.id': 'community' | 'community-with-account' | 'pro' | 'advanced' | 'teams' | 'enterprise',
   'subscription.effective.nextTrialOptInDate': string,
   'subscription.effective.organizationId': string,
   'subscription.effective.startedOn': string,
@@ -2023,7 +2076,7 @@ or
 ```typescript
 {
   'command': string,
-  'name': 'open/help-center/start-integrations' | 'open/help-center/accelerate-pr-reviews' | 'open/help-center/streamline-collaboration' | 'open/help-center/interactive-code-history' | 'open/help-center/community-vs-pro' | 'open/devex-platform' | 'open/drafts' | 'connect/integrations' | 'open/autolinks' | 'open/graph' | 'open/launchpad' | 'create/worktree' | 'open/help-center' | 'plus/sign-up' | 'plus/upgrade' | 'plus/reactivate' | 'open/walkthrough' | 'open/inspect',
+  'name': 'open/help-center/start-integrations' | 'open/help-center/accelerate-pr-reviews' | 'open/help-center/streamline-collaboration' | 'open/help-center/interactive-code-history' | 'open/help-center/community-vs-pro' | 'open/help-center/home-view' | 'open/devex-platform' | 'open/drafts' | 'open/home' | 'connect/integrations' | 'open/autolinks' | 'open/graph' | 'open/launchpad' | 'create/worktree' | 'open/help-center' | 'plus/sign-up' | 'plus/upgrade' | 'plus/reactivate' | 'open/walkthrough' | 'open/inspect',
   'type': 'command'
 }
 ```
@@ -2032,7 +2085,7 @@ or
 
 ```typescript
 {
-  'name': 'open/help-center/start-integrations' | 'open/help-center/accelerate-pr-reviews' | 'open/help-center/streamline-collaboration' | 'open/help-center/interactive-code-history' | 'open/help-center/community-vs-pro' | 'open/devex-platform' | 'open/drafts' | 'connect/integrations' | 'open/autolinks' | 'open/graph' | 'open/launchpad' | 'create/worktree' | 'open/help-center' | 'plus/sign-up' | 'plus/upgrade' | 'plus/reactivate' | 'open/walkthrough' | 'open/inspect',
+  'name': 'open/help-center/start-integrations' | 'open/help-center/accelerate-pr-reviews' | 'open/help-center/streamline-collaboration' | 'open/help-center/interactive-code-history' | 'open/help-center/community-vs-pro' | 'open/help-center/home-view' | 'open/devex-platform' | 'open/drafts' | 'open/home' | 'connect/integrations' | 'open/autolinks' | 'open/graph' | 'open/launchpad' | 'create/worktree' | 'open/help-center' | 'plus/sign-up' | 'plus/upgrade' | 'plus/reactivate' | 'open/walkthrough' | 'open/inspect',
   'type': 'url',
   'url': string
 }
@@ -2042,7 +2095,7 @@ or
 
 ```typescript
 {
-  'context.key': 'gettingStarted' | 'visualizeCodeHistory' | 'prReviews' | 'streamlineCollaboration' | 'integrations'
+  'context.key': 'integrations' | 'homeView' | 'gettingStarted' | 'visualizeCodeHistory' | 'prReviews' | 'streamlineCollaboration'
 }
 ```
 

@@ -25,7 +25,7 @@ export const enum SyncedStorageKeys {
 }
 
 export type DeprecatedGlobalStorage = {
-	/** @deprecated use `confirm:ai:tos:${AIProviders}` */
+	/** @deprecated use `confirm:ai:tos` */
 	'confirm:sendToOpenAI': boolean;
 	/** @deprecated */
 	'home:actions:completed': ('dismissed:welcome' | 'opened:scm')[];
@@ -54,10 +54,14 @@ export type DeprecatedGlobalStorage = {
 } & {
 	/** @deprecated */
 	[key in `disallow:connection:${string}`]: any;
+} & {
+	/** @deprecated use `confirm:ai:tos` */
+	[key in `confirm:ai:tos:${AIProviders}`]: boolean;
 };
 
 export type GlobalStorage = {
 	avatars: [string, StoredAvatar][];
+	'confirm:ai:tos': boolean;
 	repoVisibility: [string, StoredRepoVisibilityInfo][];
 	'deepLinks:pending': StoredDeepLinkContext;
 	pendingWhatsNewOnFocus: boolean;
@@ -82,8 +86,6 @@ export type GlobalStorage = {
 	'views:scm:grouped:welcome:dismissed': boolean;
 	'integrations:configured': StoredIntegrationConfigurations;
 } & { [key in `plus:preview:${FeaturePreviews}:usages`]: StoredFeaturePreviewUsagePeriod[] } & {
-	[key in `confirm:ai:tos:${AIProviders}`]: boolean;
-} & {
 	[key in `provider:authentication:skip:${string}`]: boolean;
 } & { [key in `gk:${string}:checkin`]: Stored<StoredGKCheckInResponse> } & {
 	[key in `gk:${string}:organizations`]: Stored<StoredOrganization[]>;
@@ -95,7 +97,7 @@ export type GlobalStorage = {
 	[key in `azure:${string}:projects`]: Stored<StoredAzureProject[] | undefined>;
 } & { [key in `bitbucket:${string}:account`]: Stored<StoredBitbucketAccount | undefined> } & {
 	[key in `bitbucket:${string}:workspaces`]: Stored<StoredBitbucketWorkspace[] | undefined>;
-};
+} & { [key in `bitbucket-server:${string}:account`]: Stored<StoredBitbucketAccount | undefined> };
 
 export type StoredIntegrationConfigurations = Record<string, StoredConfiguredIntegrationDescriptor[] | undefined>;
 
@@ -122,17 +124,21 @@ export interface StoredPromo {
 }
 
 export type DeprecatedWorkspaceStorage = {
-	/** @deprecated use `confirm:ai:tos:${AIProviders}` */
+	/** @deprecated use `confirm:ai:tos` */
 	'confirm:sendToOpenAI': boolean;
 	/** @deprecated */
 	'graph:banners:dismissed': Record<string, boolean>;
 	/** @deprecated */
 	'views:searchAndCompare:keepResults': boolean;
+} & {
+	/** @deprecated use `confirm:ai:tos` */
+	[key in `confirm:ai:tos:${AIProviders}`]: boolean;
 };
 
 export type WorkspaceStorage = {
 	assumeRepositoriesOnStartup?: boolean;
 	'branch:comparisons': StoredBranchComparisons;
+	'confirm:ai:tos': boolean;
 	'gitComandPalette:usage': StoredRecentUsage;
 	gitPath: string;
 	'graph:columns': Record<string, StoredGraphColumn>;
@@ -145,7 +151,7 @@ export type WorkspaceStorage = {
 	'views:repositories:autoRefresh': boolean;
 	'views:searchAndCompare:pinned': StoredSearchAndCompareItems;
 	'views:scm:grouped:selected': GroupableTreeViewTypes;
-} & { [key in `confirm:ai:tos:${AIProviders}`]: boolean } & {
+} & {
 	[key in `connected:${Integration['key']}`]: boolean;
 };
 
@@ -184,21 +190,25 @@ export interface StoredGKLicense {
 
 export type StoredGKLicenseType =
 	| 'gitlens-pro'
+	| 'gitlens-advanced'
 	| 'gitlens-teams'
 	| 'gitlens-hosted-enterprise'
 	| 'gitlens-self-hosted-enterprise'
 	| 'gitlens-standalone-enterprise'
 	| 'bundle-pro'
+	| 'bundle-advanced'
 	| 'bundle-teams'
 	| 'bundle-hosted-enterprise'
 	| 'bundle-self-hosted-enterprise'
 	| 'bundle-standalone-enterprise'
 	| 'gitkraken_v1-pro'
+	| 'gitkraken_v1-advanced'
 	| 'gitkraken_v1-teams'
 	| 'gitkraken_v1-hosted-enterprise'
 	| 'gitkraken_v1-self-hosted-enterprise'
 	| 'gitkraken_v1-standalone-enterprise'
 	| 'gitkraken-v1-pro'
+	| 'gitkraken-v1-advanced'
 	| 'gitkraken-v1-teams'
 	| 'gitkraken-v1-hosted-enterprise'
 	| 'gitkraken-v1-self-hosted-enterprise'

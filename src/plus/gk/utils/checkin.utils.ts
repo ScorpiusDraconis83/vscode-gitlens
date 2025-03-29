@@ -2,7 +2,7 @@ import { SubscriptionPlanId } from '../../../constants.subscription';
 import type { GKCheckInResponse, GKLicense, GKLicenseType } from '../models/checkin';
 import type { Organization } from '../models/organization';
 import type { Subscription } from '../models/subscription';
-import { getSubscriptionPlan, getSubscriptionPlanPriority } from './subscription.utils';
+import { compareSubscriptionPlans, getSubscriptionPlan, getSubscriptionPlanPriority } from './subscription.utils';
 
 export function getSubscriptionFromCheckIn(
 	data: GKCheckInResponse,
@@ -129,7 +129,7 @@ export function getSubscriptionFromCheckIn(
 		);
 	}
 
-	if (effective == null || getSubscriptionPlanPriority(actual.id) >= getSubscriptionPlanPriority(effective.id)) {
+	if (effective == null || compareSubscriptionPlans(actual.id, effective.id) >= 0) {
 		effective = { ...actual };
 	}
 
@@ -163,6 +163,11 @@ function convertLicenseTypeToPlanId(licenseType: GKLicenseType): SubscriptionPla
 		case 'gitkraken_v1-teams':
 		case 'gitkraken-v1-teams':
 			return SubscriptionPlanId.Teams;
+		case 'gitlens-advanced':
+		case 'bundle-advanced':
+		case 'gitkraken_v1-advanced':
+		case 'gitkraken-v1-advanced':
+			return SubscriptionPlanId.Advanced;
 		case 'gitlens-hosted-enterprise':
 		case 'gitlens-self-hosted-enterprise':
 		case 'gitlens-standalone-enterprise':
@@ -177,12 +182,13 @@ function convertLicenseTypeToPlanId(licenseType: GKLicenseType): SubscriptionPla
 		case 'gitkraken-v1-standalone-enterprise':
 			return SubscriptionPlanId.Enterprise;
 		default:
-			return SubscriptionPlanId.CommunityWithAccount;
+			return SubscriptionPlanId.Pro;
 	}
 }
 function isBundleLicenseType(licenseType: GKLicenseType): boolean {
 	switch (licenseType) {
 		case 'bundle-pro':
+		case 'bundle-advanced':
 		case 'bundle-teams':
 		case 'bundle-hosted-enterprise':
 		case 'bundle-self-hosted-enterprise':

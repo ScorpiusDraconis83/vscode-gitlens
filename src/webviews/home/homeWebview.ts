@@ -6,14 +6,13 @@ import { getAvatarUriFromGravatarEmail } from '../../avatars';
 import type { BranchGitCommandArgs } from '../../commands/git/branch';
 import type { OpenPullRequestOnRemoteCommandArgs } from '../../commands/openPullRequestOnRemote';
 import { GlyphChars, urls } from '../../constants';
-import { GlCommand } from '../../constants.commands';
 import type { ContextKeys } from '../../constants.context';
 import {
 	isSupportedCloudIntegrationId,
 	supportedCloudIntegrationDescriptors,
 	supportedOrderedCloudIntegrationIds,
 } from '../../constants.integrations';
-import type { HomeTelemetryContext, Source } from '../../constants.telemetry';
+import type { HomeTelemetryContext, Source, Sources } from '../../constants.telemetry';
 import type { Container } from '../../container';
 import { executeGitCommand } from '../../git/actions';
 import { openComparisonChanges } from '../../git/actions/commit';
@@ -30,6 +29,7 @@ import { RepositoryChange, RepositoryChangeComparisonMode } from '../../git/mode
 import { uncommitted } from '../../git/models/revision';
 import type { GitStatus } from '../../git/models/status';
 import type { GitWorktree } from '../../git/models/worktree';
+import { remotesSupportTitleOnPullRequestCreation } from '../../git/remotes/remoteProvider';
 import { getAssociatedIssuesForBranch } from '../../git/utils/-webview/branch.issue.utils';
 import { getBranchTargetInfo } from '../../git/utils/-webview/branch.utils';
 import { getReferenceFromBranch } from '../../git/utils/-webview/reference.utils';
@@ -67,7 +67,7 @@ import { getSettledValue } from '../../system/promise';
 import { SubscriptionManager } from '../../system/subscriptionManager';
 import type { UriTypes } from '../../uris/deepLinks/deepLink';
 import { DeepLinkServiceState, DeepLinkType } from '../../uris/deepLinks/deepLink';
-import type { ShowInCommitGraphCommandArgs } from '../plus/graph/protocol';
+import type { ShowInCommitGraphCommandArgs } from '../plus/graph/registration';
 import type { Change } from '../plus/patchDetails/protocol';
 import type { IpcMessage } from '../protocol';
 import type { WebviewHost, WebviewProvider, WebviewShowingArgs } from '../webviewProvider';
@@ -446,27 +446,27 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 	private openInGraph(params: OpenInGraphParams) {
 		const repoInfo = params != null ? this._repositoryBranches.get(params.repoPath) : undefined;
 		if (repoInfo == null) {
-			void executeCommand(GlCommand.ShowGraph, this.getSelectedRepository());
+			void executeCommand('gitlens.showGraph', this.getSelectedRepository());
 			return;
 		}
 
 		if (params!.type === 'branch') {
 			const branch = repoInfo.branches.find(b => b.id === params!.branchId);
 			if (branch != null) {
-				void executeCommand<ShowInCommitGraphCommandArgs>(GlCommand.ShowInCommitGraph, {
+				void executeCommand<ShowInCommitGraphCommandArgs>('gitlens.showInCommitGraph', {
 					ref: getReferenceFromBranch(branch),
 				});
 				return;
 			}
 		}
 
-		void executeCommand(GlCommand.ShowGraph, repoInfo.repo);
+		void executeCommand('gitlens.showGraph', repoInfo.repo);
 	}
 
 	@log()
 	private createBranch() {
 		this.container.telemetry.sendEvent('home/createBranch');
-		void executeCommand<BranchGitCommandArgs>(GlCommand.GitCommands, {
+		void executeCommand<BranchGitCommandArgs>('gitlens.gitCommands', {
 			command: 'branch',
 			state: {
 				subcommand: 'create',
@@ -665,6 +665,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 	private getOrgSettings(): State['orgSettings'] {
 		return {
 			drafts: getContext('gitlens:gk:organization:drafts:enabled', false),
+			ai: getContext('gitlens:gk:organization:ai:enabled', true),
 		};
 	}
 
@@ -689,7 +690,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 		const [subResult, integrationResult, aiModelResult] = await Promise.allSettled([
 			this.getSubscriptionState(subscription),
 			this.getIntegrationStates(true),
-			this.container.ai.getModel({ silent: true }),
+			this.container.ai.getModel({ silent: true }, { source: 'home' }),
 		]);
 
 		if (subResult.status === 'rejected') {
@@ -756,10 +757,15 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 		const activeBranch = branches.find(
 			branch => this.getBranchOverviewType(branch, worktreesByBranch) === 'active',
 		)!;
+		const aiPullRequestCreationAvailable =
+			(await repo.git.remotes().getBestRemotesWithProviders()).find(r =>
+				remotesSupportTitleOnPullRequestCreation.includes(r.provider.id),
+			) != null;
 
 		const isPro = await this.isSubscriptionPro();
 		const [activeOverviewBranch] = getOverviewBranchesCore(
 			[activeBranch],
+			aiPullRequestCreationAvailable,
 			branchesAndWorktrees.worktreesByBranch,
 			isPro,
 			this.container,
@@ -791,6 +797,10 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 
 		const forceRepo = this._invalidateOverview === 'repo';
 		const branchesAndWorktrees = await this.getBranchesData(repo, forceRepo);
+		const aiPullRequestCreationAvailable =
+			(await repo.git.remotes().getBestRemotesWithProviders()).find(r =>
+				remotesSupportTitleOnPullRequestCreation.includes(r.provider.id),
+			) != null;
 
 		const recentBranches = branchesAndWorktrees.branches.filter(
 			branch => this.getBranchOverviewType(branch, branchesAndWorktrees.worktreesByBranch) === 'recent',
@@ -823,6 +833,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 		const isPro = await this.isSubscriptionPro();
 		const recentOverviewBranches = getOverviewBranchesCore(
 			recentBranches,
+			aiPullRequestCreationAvailable,
 			branchesAndWorktrees.worktreesByBranch,
 			isPro,
 			this.container,
@@ -830,7 +841,13 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 		const staleOverviewBranches =
 			staleBranches == null
 				? undefined
-				: getOverviewBranchesCore(staleBranches, branchesAndWorktrees.worktreesByBranch, isPro, this.container);
+				: getOverviewBranchesCore(
+						staleBranches,
+						aiPullRequestCreationAvailable,
+						branchesAndWorktrees.worktreesByBranch,
+						isPro,
+						this.container,
+				  );
 
 		// TODO: revisit invalidation
 		if (!forceRepo) {
@@ -863,7 +880,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 				? {
 						name: remote.provider.name,
 						icon: remote.provider.icon === 'remote' ? 'cloud' : remote.provider.icon,
-						url: remote.provider.url({ type: RemoteResourceType.Repo }),
+						url: await remote.provider.url({ type: RemoteResourceType.Repo }),
 				  }
 				: undefined,
 		};
@@ -1143,7 +1160,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 		// force rechecking
 		const [integrationResult, aiModelResult] = await Promise.allSettled([
 			this.getIntegrationStates(true),
-			this.container.ai.getModel({ silent: true }),
+			this.container.ai.getModel({ silent: true }, { source: 'home' }),
 		]);
 
 		const integrations = getSettledValue(integrationResult) ?? [];
@@ -1324,7 +1341,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 			return;
 		}
 
-		void executeCommand<OpenPullRequestOnRemoteCommandArgs>(GlCommand.OpenPullRequestOnRemote, {
+		void executeCommand<OpenPullRequestOnRemoteCommandArgs>('gitlens.openPullRequestOnRemote', {
 			pr: { url: pr.url },
 			clipboard: clipboard,
 		});
@@ -1346,7 +1363,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 	@log<HomeWebviewProvider['pullRequestCreate']>({
 		args: { 0: r => `${r.branchId}, upstream: ${r.branchUpstreamName}` },
 	})
-	private async pullRequestCreate(ref: BranchRef) {
+	private async pullRequestCreate(ref: BranchRef & { source?: Sources; useAI?: boolean }) {
 		const { branch } = await this.getRepoInfoFromRef(ref);
 		if (branch == null) return;
 
@@ -1374,6 +1391,8 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 				upstream: branch.upstream?.name,
 				isRemote: branch.remote,
 			},
+			source: ref.source,
+			useAI: ref.useAI,
 		});
 	}
 
@@ -1458,6 +1477,7 @@ export class HomeWebviewProvider implements WebviewProvider<State, State, HomeWe
 
 function getOverviewBranchesCore(
 	branches: GitBranch[],
+	aiPullRequestCreationAvailable: boolean,
 	worktreesByBranch: Map<string, GitWorktree>,
 	isPro: boolean,
 	container: Container,
@@ -1516,6 +1536,7 @@ function getOverviewBranchesCore(
 			reference: getReferenceFromBranch(branch),
 			repoPath: branch.repoPath,
 			id: branch.id,
+			aiPullRequestCreationAvailable: aiPullRequestCreationAvailable,
 			name: branch.name,
 			opened: isActive,
 			timestamp: timestamp,

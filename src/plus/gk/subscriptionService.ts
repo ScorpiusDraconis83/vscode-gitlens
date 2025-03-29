@@ -71,18 +71,20 @@ import { authenticationProviderScopes } from './authenticationProvider';
 import type { GKCheckInResponse } from './models/checkin';
 import type { Organization } from './models/organization';
 import type { Promo } from './models/promo';
-import type { Subscription } from './models/subscription';
+import type { Subscription, SubscriptionUpgradeCommandArgs } from './models/subscription';
 import type { ServerConnection } from './serverConnection';
 import { ensurePlusFeaturesEnabled } from './utils/-webview/plus.utils';
 import { getConfiguredActiveOrganizationId, updateActiveOrganizationId } from './utils/-webview/subscription.utils';
 import { getSubscriptionFromCheckIn } from './utils/checkin.utils';
 import {
 	assertSubscriptionState,
+	compareSubscriptionPlans,
 	computeSubscriptionState,
 	getCommunitySubscription,
 	getPreviewSubscription,
 	getSubscriptionPlan,
 	getSubscriptionPlanName,
+	getSubscriptionPlanTierType,
 	getSubscriptionStateString,
 	getSubscriptionTimeRemaining,
 	getTimeRemaining,
@@ -129,6 +131,9 @@ export class SubscriptionService implements Disposable {
 		previousVersion: string | undefined,
 	) {
 		this._disposable = Disposable.from(
+			this._onDidChange,
+			this._onDidChangeFeaturePreview,
+			this._onDidCheckIn,
 			once(container.onReady)(this.onReady, this),
 			this.container.accountAuthentication.onDidChangeSessions(
 				e => setTimeout(() => this.onAuthenticationChanged(e), 0),
@@ -345,14 +350,17 @@ export class SubscriptionService implements Disposable {
 			registerCommand('gitlens.plus.login', (src?: Source) => this.loginOrSignUp(false, src)),
 			registerCommand('gitlens.plus.signUp', (src?: Source) => this.loginOrSignUp(true, src)),
 			registerCommand('gitlens.plus.logout', (src?: Source) => this.logout(src)),
+			registerCommand('gitlens.plus.referFriend', (src?: Source) => this.referFriend(src)),
 			registerCommand('gitlens.gk.switchOrganization', (src?: Source) => this.switchOrganization(src)),
 
-			registerCommand('gitlens.plus.manage', (src?: Source) => this.manage(src)),
+			registerCommand('gitlens.plus.manage', (src?: Source) => this.manageAccount(src)),
 			registerCommand('gitlens.plus.showPlans', (src?: Source) => this.showPlans(src)),
 			registerCommand('gitlens.plus.startPreviewTrial', (src?: Source) => this.startPreviewTrial(src)),
 			registerCommand('gitlens.plus.reactivateProTrial', (src?: Source) => this.reactivateProTrial(src)),
 			registerCommand('gitlens.plus.resendVerification', (src?: Source) => this.resendVerification(src)),
-			registerCommand('gitlens.plus.upgrade', (src?: Source) => this.upgrade(src)),
+			registerCommand('gitlens.plus.upgrade', (args?: SubscriptionUpgradeCommandArgs) =>
+				this.upgrade(args?.plan, args ? { source: args.source, detail: args.detail } : undefined),
+			),
 
 			registerCommand('gitlens.plus.hide', (src?: Source) => this.setProFeaturesVisibility(false, src)),
 			registerCommand('gitlens.plus.restore', (src?: Source) => this.setProFeaturesVisibility(true, src)),
@@ -538,7 +546,7 @@ export class SubscriptionService implements Disposable {
 			);
 
 			if (result === upgrade) {
-				void this.upgrade(source);
+				void this.upgrade(SubscriptionPlanId.Pro, source);
 			} else if (result === learn) {
 				void this.learnAboutPro({ source: 'prompt', detail: { action: 'trial-ended' } }, source);
 			}
@@ -629,7 +637,7 @@ export class SubscriptionService implements Disposable {
 	}
 
 	@log()
-	async manage(source: Source | undefined): Promise<void> {
+	async manageAccount(source: Source | undefined): Promise<boolean> {
 		const scope = getLogScope();
 		if (this.container.telemetry.enabled) {
 			this.container.telemetry.sendEvent('subscription/action', { action: 'manage' }, source);
@@ -637,18 +645,28 @@ export class SubscriptionService implements Disposable {
 
 		try {
 			const exchangeToken = await this.container.accountAuthentication.getExchangeToken();
-			await openUrl(this.container.urls.getGkDevUrl('account', `token=${exchangeToken}`));
+			return await openUrl(this.container.urls.getGkDevUrl('account', `token=${exchangeToken}`));
 		} catch (ex) {
 			Logger.error(ex, scope);
-			await openUrl(this.container.urls.getGkDevUrl('account'));
+			return openUrl(this.container.urls.getGkDevUrl('account'));
 		}
+	}
+
+	@log()
+	async manageSubscription(source: Source | undefined): Promise<boolean> {
+		if (this.container.telemetry.enabled) {
+			this.container.telemetry.sendEvent('subscription/action', { action: 'manage-subscription' }, source);
+		}
+
+		return openUrl(this.container.urls.getGkDevUrl('subscription/edit'));
 	}
 
 	@gate(() => '')
 	@log()
 	async reactivateProTrial(source: Source | undefined): Promise<void> {
-		if (!(await ensurePlusFeaturesEnabled())) return;
 		const scope = getLogScope();
+
+		if (!(await ensurePlusFeaturesEnabled())) return;
 
 		if (this.container.telemetry.enabled) {
 			this.container.telemetry.sendEvent('subscription/action', { action: 'reactivate' }, source);
@@ -721,6 +739,15 @@ export class SubscriptionService implements Disposable {
 			Logger.error(ex, scope);
 			debugger;
 		}
+	}
+
+	@log()
+	async referFriend(source: Source | undefined): Promise<void> {
+		if (this.container.telemetry.enabled) {
+			this.container.telemetry.sendEvent('subscription/action', { action: 'refer-friend' }, source);
+		}
+
+		await openUrl(this.container.urls.getGkDevUrl(undefined, 'referral_portal=true&source=gitlens'));
 	}
 
 	@gate(() => '')
@@ -804,6 +831,7 @@ export class SubscriptionService implements Disposable {
 		}
 	}
 
+	@log()
 	private showPlans(source: Source | undefined): void {
 		if (this.container.telemetry.enabled) {
 			this.container.telemetry.sendEvent('subscription/action', { action: 'pricing' }, source);
@@ -873,10 +901,12 @@ export class SubscriptionService implements Disposable {
 	}
 
 	@log()
-	async upgrade(source: Source | undefined): Promise<void> {
+	async upgrade(plan: SubscriptionPlanId | undefined, source: Source | undefined): Promise<boolean> {
 		const scope = getLogScope();
 
-		if (!(await ensurePlusFeaturesEnabled())) return;
+		if (!(await ensurePlusFeaturesEnabled())) return false;
+
+		plan ??= SubscriptionPlanId.Pro;
 
 		let aborted = false;
 		const promo = await this.container.productConfig.getApplicablePromo(this._subscription.state);
@@ -901,12 +931,15 @@ export class SubscriptionService implements Disposable {
 
 		const hasAccount = this._subscription.account != null;
 		if (hasAccount) {
-			// Do a pre-check-in to see if we've already upgraded to a paid plan.
+			// Do a pre-check-in to see if we've already upgraded to a paid plan
 			try {
 				const session = await this.ensureSession(false, source);
 				if (session != null) {
-					if ((await this.checkUpdatedSubscription(source)) === SubscriptionState.Paid) {
-						return;
+					if (
+						(await this.checkUpdatedSubscription(source)) === SubscriptionState.Paid &&
+						compareSubscriptionPlans(this._subscription.plan.effective.id, plan) >= 0
+					) {
+						return true;
 					}
 				}
 			} catch {}
@@ -915,6 +948,7 @@ export class SubscriptionService implements Disposable {
 		const query = new URLSearchParams();
 		query.set('source', 'gitlens');
 		query.set('product', 'gitlens');
+		query.set('planType', getSubscriptionPlanTierType(plan));
 
 		if (promo?.code != null) {
 			query.set('promoCode', promo.code);
@@ -955,7 +989,7 @@ export class SubscriptionService implements Disposable {
 		aborted = !(await openUrl(this.container.urls.getGkDevUrl('purchase/checkout', query)));
 
 		if (aborted) {
-			return;
+			return false;
 		}
 
 		telemetry?.dispose();
@@ -989,6 +1023,8 @@ export class SubscriptionService implements Disposable {
 		if (refresh) {
 			void this.checkUpdatedSubscription(source);
 		}
+
+		return true;
 	}
 
 	@gate<SubscriptionService['validate']>(o => `${o?.force ?? false}`)

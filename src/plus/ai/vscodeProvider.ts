@@ -1,5 +1,6 @@
-import type { CancellationToken, Disposable, Event, LanguageModelChat, LanguageModelChatSelector } from 'vscode';
-import { CancellationTokenSource, EventEmitter, LanguageModelChatMessage, lm } from 'vscode';
+import type { CancellationToken, Event, LanguageModelChat, LanguageModelChatSelector } from 'vscode';
+import { CancellationTokenSource, Disposable, EventEmitter, LanguageModelChatMessage, lm } from 'vscode';
+import { vscodeProviderDescriptor } from '../../constants.ai';
 import type { TelemetryEvents } from '../../constants.telemetry';
 import type { Container } from '../../container';
 import { sum } from '../../system/iterable';
@@ -9,11 +10,11 @@ import { capitalize } from '../../system/string';
 import type { ServerConnection } from '../gk/serverConnection';
 import type { AIActionType, AIModel } from './models/model';
 import type { PromptTemplate, PromptTemplateContext } from './models/promptTemplates';
-import type { AIProvider } from './models/provider';
+import type { AIProvider, AIRequestResult } from './models/provider';
 import { getMaxCharacters, getValidatedTemperature, showDiffTruncationWarning } from './utils/-webview/ai.utils';
 import { getLocalPromptTemplate, resolvePrompt } from './utils/-webview/prompt.utils';
 
-const provider = { id: 'vscode', name: 'VS Code Provided' } as const;
+const provider = vscodeProviderDescriptor;
 
 type VSCodeAIModel = AIModel<typeof provider.id> & { vendor: string; selector: LanguageModelChatSelector };
 
@@ -39,11 +40,18 @@ export class VSCodeAIProvider implements AIProvider<typeof provider.id> {
 		private readonly container: Container,
 		private readonly connection: ServerConnection,
 	) {
-		this._disposable = lm.onDidChangeChatModels(() => this._onDidChange.fire());
+		this._disposable = Disposable.from(
+			this._onDidChange,
+			lm.onDidChangeChatModels(() => this._onDidChange.fire()),
+		);
 	}
 
 	dispose(): void {
 		this._disposable.dispose();
+	}
+
+	async configured(_silent: boolean): Promise<boolean> {
+		return (await this.getModels()).length !== 0;
 	}
 
 	async getModels(): Promise<readonly AIModel<typeof provider.id>[]> {
@@ -66,7 +74,7 @@ export class VSCodeAIProvider implements AIProvider<typeof provider.id> {
 		model: VSCodeAIModel,
 		reporting: TelemetryEvents['ai/generate' | 'ai/explain'],
 		options?: { cancellation?: CancellationToken; outputTokens?: number },
-	): Promise<string | undefined> {
+	): Promise<AIRequestResult | undefined> {
 		using scope = startLogScope(`${getLoggableName(this)}.sendRequest`, false);
 
 		const chatModel = await this.getChatModel(model);
@@ -120,7 +128,7 @@ export class VSCodeAIProvider implements AIProvider<typeof provider.id> {
 						message += fragment;
 					}
 
-					return message.trim();
+					return { content: message.trim() } satisfies AIRequestResult;
 				} catch (ex) {
 					debugger;
 
@@ -155,7 +163,7 @@ export class VSCodeAIProvider implements AIProvider<typeof provider.id> {
 function getModelFromChatModel(model: LanguageModelChat): VSCodeAIModel {
 	return {
 		id: `${model.vendor}:${model.family}`,
-		name: `${capitalize(model.vendor)} ${model.name}`,
+		name: model.vendor === 'copilot' ? model.name : `${capitalize(model.vendor)} ${model.name}`,
 		vendor: model.vendor,
 		selector: {
 			vendor: model.vendor,

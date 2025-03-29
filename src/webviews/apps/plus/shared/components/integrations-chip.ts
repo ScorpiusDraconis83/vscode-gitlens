@@ -6,8 +6,9 @@ import type {
 	ManageCloudIntegrationsCommandArgs,
 } from '../../../../../commands/cloudIntegrations';
 import type { IntegrationFeatures } from '../../../../../constants.integrations';
-import { SubscriptionState } from '../../../../../constants.subscription';
+import { SubscriptionPlanId, SubscriptionState } from '../../../../../constants.subscription';
 import type { Source } from '../../../../../constants.telemetry';
+import type { SubscriptionUpgradeCommandArgs } from '../../../../../plus/gk/models/subscription';
 import {
 	hasAccountFromSubscriptionState,
 	isSubscriptionStatePaidOrTrial,
@@ -25,7 +26,7 @@ import '../../../shared/components/overlays/tooltip';
 import '../../../shared/components/feature-badge';
 
 @customElement('gl-integrations-chip')
-export class GLIntegrationsChip extends LitElement {
+export class GlIntegrationsChip extends LitElement {
 	static override shadowRootOptions: ShadowRootInit = {
 		...LitElement.shadowRootOptions,
 		delegatesFocus: true,
@@ -178,6 +179,10 @@ export class GLIntegrationsChip extends LitElement {
 		return this._state.ai;
 	}
 
+	private get aiEnabled() {
+		return this._state.orgSettings?.ai ?? true;
+	}
+
 	private get integrations() {
 		return this._state.integrations;
 	}
@@ -288,7 +293,8 @@ export class GLIntegrationsChip extends LitElement {
 				${showLock
 					? html`<gl-button
 							appearance="toolbar"
-							href="${createCommandLink<Source>('gitlens.plus.upgrade', {
+							href="${createCommandLink<SubscriptionUpgradeCommandArgs>('gitlens.plus.upgrade', {
+								plan: SubscriptionPlanId.Pro,
 								source: 'home',
 								detail: 'integrations',
 							})}"
@@ -322,52 +328,58 @@ export class GLIntegrationsChip extends LitElement {
 
 	private renderAIStatus() {
 		return html`<span
-			class="integration status--${this.ai?.model != null ? 'connected' : 'disconnected'}"
+			class="integration status--${this.aiEnabled && this.ai?.model != null ? 'connected' : 'disconnected'}"
 			slot="anchor"
 		>
-			<code-icon icon="${this.ai?.model != null ? 'sparkle-filled' : 'sparkle'}"></code-icon>
+			<code-icon icon="${this.aiEnabled && this.ai?.model != null ? 'sparkle-filled' : 'sparkle'}"></code-icon>
 		</span>`;
 	}
 
 	private renderAIRow() {
 		const { model } = this.ai;
 
-		const connected = model != null;
-		const showLock = false;
+		const connectedAndEnabled = this.aiEnabled && model != null;
+		const showLock = !this.aiEnabled;
 		const showProBadge = false;
-		const icon = connected ? 'sparkle-filled' : 'sparkle'; // TODO: Provider?
+		const icon = connectedAndEnabled ? 'sparkle-filled' : 'sparkle'; // TODO: Provider?
 
 		return html`<div
-			class="integration-row integration-row--ai status--${connected ? 'connected' : 'disconnected'}${showLock
-				? ' is-locked'
-				: ''}"
+			class="integration-row integration-row--ai status--${connectedAndEnabled
+				? 'connected'
+				: 'disconnected'}${showLock ? ' is-locked' : ''}"
 		>
 			<span class="integration__icon"><code-icon icon="${icon}"></code-icon></span>
-			<span class="integration__content">
-				<span class="integration__title">
-					<span>${model?.provider.name ?? 'AI'}</span>
-					${showProBadge
-						? html` <gl-feature-badge
-								placement="right"
-								.source=${{ source: 'home', detail: 'integrations' } as const}
-								cloud
-						  ></gl-feature-badge>`
-						: nothing}
-				</span>
-				${model?.name ? html`<span class="integration__details">${model.name}</span>` : nothing}
-			</span>
-			<span class="integration__actions">
-				<gl-button
-					appearance="toolbar"
-					href="${createCommandLink<Source>('gitlens.switchAIModel', {
-						source: 'home',
-						detail: 'integrations',
-					})}"
-					tooltip="Switch AI Model"
-					aria-label="Switch AI Model"
-					><code-icon icon="arrow-swap"></code-icon
-				></gl-button>
-			</span>
+			${this.aiEnabled
+				? html`<span class="integration__content">
+							<span class="integration__title">
+								<span>${model?.provider.name ?? 'AI'}</span>
+								${showProBadge
+									? html` <gl-feature-badge
+											placement="right"
+											.source=${{ source: 'home', detail: 'integrations' } as const}
+											cloud
+									  ></gl-feature-badge>`
+									: nothing}
+							</span>
+							${model?.name ? html`<span class="integration__details">${model.name}</span>` : nothing}
+						</span>
+						<span class="integration__actions">
+							<gl-button
+								appearance="toolbar"
+								href="${createCommandLink<Source>('gitlens.switchAIModel', {
+									source: 'home',
+									detail: 'integrations',
+								})}"
+								tooltip="Switch AI Provider/Model"
+								aria-label="Switch AI Provider/Model"
+								><code-icon icon="arrow-swap"></code-icon
+							></gl-button>
+						</span>`
+				: html`<span class="integration__content">
+						<span class="integration_details"
+							>GitLens AI features have been disabled by your GitKraken admin</span
+						>
+				  </span>`}
 		</div>`;
 	}
 }

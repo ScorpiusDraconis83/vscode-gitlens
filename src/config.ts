@@ -64,23 +64,22 @@ export type BlameHighlightLocations = 'gutter' | 'line' | 'overview';
 export type BranchSorting = 'date:desc' | 'date:asc' | 'name:asc' | 'name:desc';
 export type ChangesLocations = 'gutter' | 'line' | 'overview';
 
-export const enum CodeLensCommand {
-	CopyRemoteCommitUrl = 'gitlens.copyRemoteCommitUrl',
-	CopyRemoteFileUrl = 'gitlens.copyRemoteFileUrl',
-	DiffWithPrevious = 'gitlens.diffWithPrevious',
-	OpenCommitOnRemote = 'gitlens.openCommitOnRemote',
-	OpenFileOnRemote = 'gitlens.openFileOnRemote',
-	RevealCommitInView = 'gitlens.revealCommitInView',
-	ShowCommitsInView = 'gitlens.showCommitsInView',
-	ShowQuickCommitDetails = 'gitlens.showQuickCommitDetails',
-	ShowQuickCommitFileDetails = 'gitlens.showQuickCommitFileDetails',
-	ShowQuickCurrentBranchHistory = 'gitlens.showQuickRepoHistory',
-	ShowQuickFileHistory = 'gitlens.showQuickFileHistory',
-	ToggleFileBlame = 'gitlens.toggleFileBlame',
-	ToggleFileChanges = 'gitlens.toggleFileChanges',
-	ToggleFileChangesOnly = 'gitlens.toggleFileChangesOnly',
-	ToggleFileHeatmap = 'gitlens.toggleFileHeatmap',
-}
+export type CodeLensCommands =
+	| 'gitlens.copyRemoteCommitUrl'
+	| 'gitlens.copyRemoteFileUrl'
+	| 'gitlens.diffWithPrevious'
+	| 'gitlens.openCommitOnRemote'
+	| 'gitlens.openFileOnRemote'
+	| 'gitlens.revealCommitInView'
+	| 'gitlens.showCommitsInView'
+	| 'gitlens.showQuickCommitDetails'
+	| 'gitlens.showQuickCommitFileDetails'
+	| 'gitlens.showQuickRepoHistory'
+	| 'gitlens.showQuickFileHistory'
+	| 'gitlens.toggleFileBlame'
+	| 'gitlens.toggleFileChanges'
+	| 'gitlens.toggleFileChangesOnly'
+	| 'gitlens.toggleFileHeatmap';
 
 export type CodeLensScopes = 'document' | 'containers' | 'blocks';
 export type ContributorSorting =
@@ -131,25 +130,24 @@ type DeprecatedOutputLevel =
 	| /** @deprecated use `info` */ 'verbose';
 export type OutputLevel = LogLevel | DeprecatedOutputLevel;
 
-export const enum StatusBarCommand {
-	CopyRemoteCommitUrl = 'gitlens.copyRemoteCommitUrl',
-	CopyRemoteFileUrl = 'gitlens.copyRemoteFileUrl',
-	DiffWithPrevious = 'gitlens.diffWithPrevious',
-	DiffWithWorking = 'gitlens.diffWithWorking',
-	OpenCommitOnRemote = 'gitlens.openCommitOnRemote',
-	OpenFileOnRemote = 'gitlens.openFileOnRemote',
-	RevealCommitInView = 'gitlens.revealCommitInView',
-	ShowCommitsInView = 'gitlens.showCommitsInView',
-	ShowQuickCommitDetails = 'gitlens.showQuickCommitDetails',
-	ShowQuickCommitFileDetails = 'gitlens.showQuickCommitFileDetails',
-	ShowQuickCurrentBranchHistory = 'gitlens.showQuickRepoHistory',
-	ShowQuickFileHistory = 'gitlens.showQuickFileHistory',
-	ToggleCodeLens = 'gitlens.toggleCodeLens',
-	ToggleFileBlame = 'gitlens.toggleFileBlame',
-	ToggleFileChanges = 'gitlens.toggleFileChanges',
-	ToggleFileChangesOnly = 'gitlens.toggleFileChangesOnly',
-	ToggleFileHeatmap = 'gitlens.toggleFileHeatmap',
-}
+export type StatusBarCommands =
+	| 'gitlens.copyRemoteCommitUrl'
+	| 'gitlens.copyRemoteFileUrl'
+	| 'gitlens.diffWithPrevious'
+	| 'gitlens.diffWithWorking'
+	| 'gitlens.openCommitOnRemote'
+	| 'gitlens.openFileOnRemote'
+	| 'gitlens.revealCommitInView'
+	| 'gitlens.showCommitsInView'
+	| 'gitlens.showQuickCommitDetails'
+	| 'gitlens.showQuickCommitFileDetails'
+	| 'gitlens.showQuickRepoHistory'
+	| 'gitlens.showQuickFileHistory'
+	| 'gitlens.toggleCodeLens'
+	| 'gitlens.toggleFileBlame'
+	| 'gitlens.toggleFileChanges'
+	| 'gitlens.toggleFileChangesOnly'
+	| 'gitlens.toggleFileHeatmap';
 
 // NOTE: Must be kept in sync with `gitlens.advanced.messages` setting in the package.json
 export type SuppressedMessages =
@@ -214,6 +212,10 @@ interface AIConfig {
 	readonly generateChangelog: {
 		readonly customInstructions: string;
 	};
+	readonly generatePullRequestMessage: {
+		readonly customInstructions: string;
+		readonly enabled: boolean;
+	};
 	readonly generateCommitMessage: {
 		readonly customInstructions: string;
 		readonly enabled: boolean;
@@ -221,10 +223,13 @@ interface AIConfig {
 	readonly generateStashMessage: {
 		readonly customInstructions: string;
 	};
-	readonly generateCloudPatchMessage: {
+	readonly generateCreateCloudPatch: {
 		readonly customInstructions: string;
 	};
-	readonly generateCodeSuggestMessage: {
+	readonly generateCreateCodeSuggest: {
+		readonly customInstructions: string;
+	};
+	readonly generateCreatePullRequest: {
 		readonly customInstructions: string;
 	};
 	readonly gitkraken: {
@@ -295,14 +300,14 @@ interface CloudPatchesConfig {
 export interface CodeLensConfig {
 	readonly authors: {
 		readonly enabled: boolean;
-		readonly command: CodeLensCommand | false;
+		readonly command: CodeLensCommands | false;
 	};
 	readonly dateFormat: DateTimeFormat | string | null;
 	/*readonly*/ enabled: boolean;
 	readonly includeSingleLineSymbols: boolean;
 	readonly recentChange: {
 		readonly enabled: boolean;
-		readonly command: CodeLensCommand | false;
+		readonly command: CodeLensCommands | false;
 	};
 	readonly scopes: CodeLensScopes[];
 	readonly scopesByLanguage: CodeLensLanguageScope[] | null;
@@ -643,6 +648,7 @@ export interface RemotesUrlsConfig {
 	readonly branch: string;
 	readonly commit: string;
 	readonly comparison?: string;
+	readonly createPullRequest?: string;
 	readonly file: string;
 	readonly fileInBranch: string;
 	readonly fileInCommit: string;
@@ -652,7 +658,7 @@ export interface RemotesUrlsConfig {
 
 interface StatusBarConfig {
 	readonly alignment: 'left' | 'right';
-	readonly command: StatusBarCommand;
+	readonly command: StatusBarCommands;
 	readonly dateFormat: DateTimeFormat | (string & object) | null;
 	/*readonly*/ enabled: boolean;
 	readonly format: string;

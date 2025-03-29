@@ -19,6 +19,7 @@ import type { IntegrationAuthenticationService } from '../authentication/integra
 import type {
 	GetAzureProjectsForResourceFn,
 	GetAzureResourcesForUserFn,
+	GetBitbucketPullRequestsAuthoredByUserForWorkspaceFn,
 	GetBitbucketResourcesForUserFn,
 	GetCurrentUserFn,
 	GetCurrentUserForInstanceFn,
@@ -132,6 +133,7 @@ export class ProvidersApi {
 			[HostingIntegrationId.GitLab]: {
 				...providersMetadata[HostingIntegrationId.GitLab],
 				provider: providerApis.gitlab,
+				getRepoFn: providerApis.gitlab.getRepo.bind(providerApis.gitlab),
 				getCurrentUserFn: providerApis.gitlab.getCurrentUser.bind(providerApis.gitlab) as GetCurrentUserFn,
 				getPullRequestsForReposFn: providerApis.gitlab.getPullRequestsForRepos.bind(
 					providerApis.gitlab,
@@ -202,6 +204,10 @@ export class ProvidersApi {
 				getBitbucketResourcesForUserFn: providerApis.bitbucket.getWorkspacesForUser.bind(
 					providerApis.bitbucket,
 				) as GetBitbucketResourcesForUserFn,
+				getBitbucketPullRequestsAuthoredByUserForWorkspaceFn:
+					providerApis.bitbucket.getPullRequestsForUserAndWorkspace.bind(
+						providerApis.bitbucket,
+					) as GetBitbucketPullRequestsAuthoredByUserForWorkspaceFn,
 				getPullRequestsForReposFn: providerApis.bitbucket.getPullRequestsForRepos.bind(
 					providerApis.bitbucket,
 				) as GetPullRequestsForReposFn,
@@ -212,9 +218,28 @@ export class ProvidersApi {
 					providerApis.bitbucket,
 				) as MergePullRequestFn,
 			},
+			[SelfHostedIntegrationId.BitbucketServer]: {
+				...providersMetadata[SelfHostedIntegrationId.BitbucketServer],
+				provider: providerApis.bitbucketServer,
+				getCurrentUserFn: providerApis.bitbucketServer.getCurrentUser.bind(
+					providerApis.bitbucketServer,
+				) as GetCurrentUserFn,
+				getBitbucketServerPullRequestsForCurrentUserFn:
+					providerApis.bitbucketServer.getPullRequestsForCurrentUser.bind(providerApis.bitbucketServer),
+				getPullRequestsForReposFn: providerApis.bitbucketServer.getPullRequestsForRepos.bind(
+					providerApis.bitbucketServer,
+				) as GetPullRequestsForReposFn,
+				getPullRequestsForRepoFn: providerApis.bitbucketServer.getPullRequestsForRepo.bind(
+					providerApis.bitbucketServer,
+				) as GetPullRequestsForRepoFn,
+				mergePullRequestFn: providerApis.bitbucketServer.mergePullRequest.bind(
+					providerApis.bitbucketServer,
+				) as MergePullRequestFn,
+			},
 			[HostingIntegrationId.AzureDevOps]: {
 				...providersMetadata[HostingIntegrationId.AzureDevOps],
 				provider: providerApis.azureDevOps,
+				getRepoOfProjectFn: providerApis.azureDevOps.getRepo.bind(providerApis.azureDevOps),
 				getCurrentUserFn: providerApis.azureDevOps.getCurrentUser.bind(
 					providerApis.azureDevOps,
 				) as GetCurrentUserFn,
@@ -442,6 +467,48 @@ export class ProvidersApi {
 		}
 	}
 
+	async getRepo(
+		providerId: IntegrationId,
+		owner: string,
+		name: string,
+		project?: string,
+		options?: { accessToken?: string; isPAT?: boolean; baseUrl?: string },
+	): Promise<ProviderRepository | undefined> {
+		if (providerId === HostingIntegrationId.AzureDevOps && project != null) {
+			const { provider, token } = await this.ensureProviderTokenAndFunction(
+				providerId,
+				'getRepoOfProjectFn',
+				options?.accessToken,
+			);
+
+			try {
+				const result = await provider['getRepoOfProjectFn']?.(
+					{ namespace: owner, name: name, project: project },
+					{ token: token, isPAT: options?.isPAT, baseUrl: options?.baseUrl },
+				);
+				return result?.data;
+			} catch (e) {
+				return this.handleProviderError<ProviderRepository>(providerId, token, e);
+			}
+		} else {
+			const { provider, token } = await this.ensureProviderTokenAndFunction(
+				providerId,
+				'getRepoFn',
+				options?.accessToken,
+			);
+
+			try {
+				const result = await provider['getRepoFn']?.(
+					{ namespace: owner, name: name, project: project },
+					{ token: token, isPAT: options?.isPAT, baseUrl: options?.baseUrl },
+				);
+				return result?.data;
+			} catch (e) {
+				return this.handleProviderError<ProviderRepository>(providerId, token, e);
+			}
+		}
+	}
+
 	async getCurrentUser(
 		providerId: IntegrationId,
 		options?: { accessToken?: string; isPAT?: boolean; baseUrl?: string },
@@ -561,6 +628,49 @@ export class ProvidersApi {
 				token,
 				e,
 			);
+		}
+	}
+
+	async getBitbucketPullRequestsAuthoredByUserForWorkspace(
+		userId: string,
+		workspaceSlug: string,
+		options?: { accessToken?: string },
+	): Promise<ProviderPullRequest[] | undefined> {
+		const { provider, token } = await this.ensureProviderTokenAndFunction(
+			HostingIntegrationId.Bitbucket,
+			'getBitbucketPullRequestsAuthoredByUserForWorkspaceFn',
+			options?.accessToken,
+		);
+
+		try {
+			return (
+				await provider.getBitbucketPullRequestsAuthoredByUserForWorkspaceFn?.(
+					{ userId: userId, workspaceSlug: workspaceSlug },
+					{ token: token },
+				)
+			)?.data;
+		} catch (e) {
+			return this.handleProviderError(HostingIntegrationId.Bitbucket, token, e);
+		}
+	}
+
+	async getBitbucketServerPullRequestsForCurrentUser(
+		baseUrl: string,
+		options?: {
+			accessToken?: string;
+		},
+	): Promise<ProviderPullRequest[] | undefined> {
+		const { provider, token } = await this.ensureProviderTokenAndFunction(
+			SelfHostedIntegrationId.BitbucketServer,
+			'getBitbucketServerPullRequestsForCurrentUserFn',
+			options?.accessToken,
+		);
+		try {
+			return (
+				await provider.getBitbucketServerPullRequestsForCurrentUserFn?.({}, { token: token, baseUrl: baseUrl })
+			)?.data;
+		} catch (e) {
+			return this.handleProviderError(SelfHostedIntegrationId.BitbucketServer, token, e);
 		}
 	}
 
@@ -779,6 +889,7 @@ export class ProvidersApi {
 								login: pr.repository.owner,
 							},
 						},
+						version: pr.version,
 					},
 					...options,
 				},

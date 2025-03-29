@@ -1,4 +1,4 @@
-import type { CancellationToken, Event, MessageItem } from 'vscode';
+import type { CancellationToken, Disposable, Event, MessageItem } from 'vscode';
 import { EventEmitter, window } from 'vscode';
 import type { AutolinkReference, DynamicAutolinkReference } from '../../autolinks/models/autolinks';
 import type {
@@ -44,6 +44,7 @@ import type {
 	ProviderPullRequest,
 	ProviderRepoInput,
 	ProviderReposInput,
+	ProviderRepository,
 } from './providers/models';
 import { IssueFilter, PagingMode, PullRequestFilter } from './providers/models';
 import type { ProvidersApi } from './providers/providersApi';
@@ -115,7 +116,8 @@ export function isIssueIntegration(integration: Integration): integration is Iss
 export abstract class IntegrationBase<
 	ID extends SupportedIntegrationIds = SupportedIntegrationIds,
 	T extends ResourceDescriptor = ResourceDescriptor,
-> {
+> implements Disposable
+{
 	abstract readonly type: IntegrationType;
 
 	private readonly _onDidChange = new EventEmitter<void>();
@@ -128,6 +130,10 @@ export abstract class IntegrationBase<
 		protected readonly authenticationService: IntegrationAuthenticationService,
 		protected readonly getProvidersApi: () => Promise<ProvidersApi>,
 	) {}
+
+	dispose(): void {
+		this._onDidChange.dispose();
+	}
 
 	abstract get authProvider(): IntegrationAuthenticationProviderDescriptor;
 	abstract get id(): ID;
@@ -779,6 +785,8 @@ export abstract class HostingIntegration<
 		);
 		return defaultBranch;
 	}
+
+	getRepoInfo?(repo: { owner: string; name: string; project?: string }): Promise<ProviderRepository | undefined>;
 
 	protected abstract getProviderDefaultBranch(
 		{ accessToken }: ProviderAuthenticationSession,

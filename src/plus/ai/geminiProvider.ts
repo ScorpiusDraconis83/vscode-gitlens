@@ -1,12 +1,17 @@
 import type { CancellationToken } from 'vscode';
 import type { Response } from '@env/fetch';
+import { geminiProviderDescriptor as provider } from '../../constants.ai';
 import type { AIActionType, AIModel } from './models/model';
 import { OpenAICompatibleProvider } from './openAICompatibleProvider';
 
-const provider = { id: 'gemini', name: 'Google' } as const;
-
 type GeminiModel = AIModel<typeof provider.id>;
 const models: GeminiModel[] = [
+	{
+		id: 'gemini-2.5-pro-exp-03-25',
+		name: 'Gemini 2.5 Pro (Experimental)',
+		maxTokens: { input: 1000000, output: 64000 },
+		provider: provider,
+	},
 	{
 		id: 'gemini-2.0-flash',
 		name: 'Gemini 2.0 Flash',
@@ -96,6 +101,7 @@ const models: GeminiModel[] = [
 export class GeminiProvider extends OpenAICompatibleProvider<typeof provider.id> {
 	readonly id = provider.id;
 	readonly name = provider.name;
+	protected readonly descriptor = provider;
 	protected readonly config = {
 		keyUrl: 'https://aistudio.google.com/app/apikey',
 	};

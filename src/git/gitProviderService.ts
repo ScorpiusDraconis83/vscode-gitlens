@@ -39,8 +39,8 @@ import type { Deferred } from '../system/promise';
 import { asSettled, defer, getDeferredPromiseIfPending, getSettledValue } from '../system/promise';
 import { VisitedPathsTrie } from '../system/trie';
 import type {
+	CachedGitTypes,
 	GitBranchesSubProvider,
-	GitCaches,
 	GitCommitsSubProvider,
 	GitConfigSubProvider,
 	GitContributorsSubProvider,
@@ -233,6 +233,8 @@ export class GitProviderService implements Disposable {
 	constructor(private readonly container: Container) {
 		this._initializing = defer<number>();
 		this._disposable = Disposable.from(
+			this._onDidChangeProviders,
+			this._onDidChangeRepositories,
 			container.subscription.onDidChange(this.onSubscriptionChanged, this),
 			window.onDidChangeWindowState(this.onWindowStateChanged, this),
 			workspace.onDidChangeWorkspaceFolders(this.onWorkspaceFoldersChanged, this),
@@ -773,7 +775,16 @@ export class GitProviderService implements Disposable {
 			return { allowed: subscription.account?.verified !== false, subscription: { current: subscription } };
 		}
 
-		if (feature === 'launchpad' || feature === 'startWork' || feature === 'associateIssueWithBranch') {
+		if (
+			feature === 'launchpad' ||
+			feature === 'startWork' ||
+			feature === 'associateIssueWithBranch' ||
+			feature === 'explainCommit' ||
+			feature === 'generateChangelog' ||
+			feature === 'generateCreateDraft' ||
+			feature === 'generateCreatePullRequest' ||
+			feature === 'generateStashMessage'
+		) {
 			return { allowed: false, subscription: { current: subscription, required: SubscriptionPlanId.Pro } };
 		}
 
@@ -1350,8 +1361,8 @@ export class GitProviderService implements Disposable {
 	}
 
 	@log({ singleLine: true })
-	resetCaches(...caches: GitCaches[]): void {
-		this.container.events.fire('git:cache:reset', { caches: caches });
+	resetCaches(...types: CachedGitTypes[]): void {
+		this.container.events.fire('git:cache:reset', { types: types });
 	}
 
 	@log<GitProviderService['excludeIgnoredUris']>({ args: { 1: uris => uris.length } })
